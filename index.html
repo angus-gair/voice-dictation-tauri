@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Voice Dictation - Universal Speech to Text" />
+    <title>Voice Dictation</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="header">
+        <h1 class="header-title">🎤 Voice Dictation</h1>
+        <div class="status-indicator" id="statusIndicator">
+          <span class="status-dot"></span>
+          <span class="status-text">Ready</span>
+        </div>
+      </header>
+
+      <!-- Main Control -->
+      <main class="main-content">
+        <!-- Recording Button -->
+        <div class="recording-section">
+          <button id="recordButton" class="record-button" aria-label="Start/Stop Recording">
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+            <span class="button-text">Tap to Speak</span>
+          </button>
+
+          <div class="waveform" id="waveform">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+        </div>
+
+        <!-- Text Output -->
+        <div class="text-output-section">
+          <label for="outputText" class="section-label">Transcribed Text</label>
+          <textarea
+            id="outputText"
+            class="text-output"
+            placeholder="Your speech will appear here..."
+            readonly
+          ></textarea>
+
+          <div class="action-buttons">
+            <button id="copyButton" class="action-btn" title="Copy to Clipboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy
+            </button>
+
+            <button id="clearButton" class="action-btn" title="Clear Text">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Clear
+            </button>
+
+            <button id="insertButton" class="action-btn action-btn-primary" title="Insert into Active Window">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Insert
+            </button>
+          </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+          <h2 class="section-label">Settings</h2>
+
+          <div class="setting-group">
+            <label class="setting-label">
+              <input type="checkbox" id="autoPunctuation" checked />
+              <span>Auto Punctuation</span>
+            </label>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label">
+              <input type="checkbox" id="numbersAsDigits" />
+              <span>Numbers as Digits</span>
+            </label>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label">
+              <input type="checkbox" id="autoInsert" />
+              <span>Auto Insert (No Confirmation)</span>
+            </label>
+          </div>
+
+          <div class="setting-group">
+            <label for="timeout" class="setting-label-full">Silence Timeout (seconds)</label>
+            <input type="range" id="timeout" min="1" max="30" value="5" />
+            <span class="timeout-value">5s</span>
+          </div>
+
+          <div class="setting-group">
+            <label for="modelSize" class="setting-label-full">Model Size</label>
+            <select id="modelSize" class="setting-select">
+              <option value="small">Small (Fast, Less Accurate)</option>
+              <option value="large">Large (Slow, More Accurate)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick Commands -->
+        <div class="commands-panel">
+          <h2 class="section-label">Voice Commands</h2>
+          <div class="commands-grid">
+            <div class="command-item">
+              <span class="command-voice">"period"</span>
+              <span class="command-result">.</span>
+            </div>
+            <div class="command-item">
+              <span class="command-voice">"comma"</span>
+              <span class="command-result">,</span>
+            </div>
+            <div class="command-item">
+              <span class="command-voice">"new line"</span>
+              <span class="command-result">↵</span>
+            </div>
+            <div class="command-item">
+              <span class="command-voice">"question mark"</span>
+              <span class="command-result">?</span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <button id="settingsToggle" class="footer-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.2 4.2l4.2 4.2M1 12h6m6 0h6M5.6 18.4l4.2-4.2m4.2-4.2l4.2-4.2"></path>
+          </svg>
+          Settings
+        </button>
+
+        <button id="commandsToggle" class="footer-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+          Commands
+        </button>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
