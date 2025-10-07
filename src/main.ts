@@ -313,10 +313,18 @@ recordButton?.addEventListener('touchstart', (e) => {
   toggleRecording();
 });
 
-// System initialization check
-async function initializeSystem() {
+// System initialization check with retry logic
+async function initializeSystem(retryCount = 0): Promise<boolean> {
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second
+  
   try {
     updateStatus('processing', 'Checking system...');
+
+    // Ensure invoke is available
+    if (typeof invoke !== 'function') {
+      throw new Error('Tauri invoke function is not available');
+    }
 
     const status = await invoke<VoiceSystemStatus>('check_voice_system');
     state.systemStatus = status;
@@ -366,6 +374,17 @@ async function initializeSystem() {
     return true;
   } catch (error) {
     console.error('Error checking voice system:', error);
+    
+    // If it's a Tauri initialization issue and we haven't exceeded max retries, try again
+    if (retryCount < maxRetries && (
+      error instanceof Error && error.message.includes('invoke') ||
+      error instanceof Error && error.message.includes('__TAURI__')
+    )) {
+      console.log(`Retrying system initialization (attempt ${retryCount + 1}/${maxRetries + 1})`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      return initializeSystem(retryCount + 1);
+    }
+    
     const errorMsg = error instanceof Error ? error.message : String(error);
     updateStatus('error', 'Initialization failed');
     showErrorNotification(`System initialization failed: ${errorMsg}`, 10000);
@@ -448,5 +467,9 @@ function showNotification(message: string, type: 'error' | 'success' | 'info', d
 // Initialize - Wait for Tauri to be ready
 document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();
-  await initializeSystem();
+  
+  // Add a small delay to ensure Tauri is fully loaded
+  setTimeout(async () => {
+    await initializeSystem();
+  }, 100);
 });

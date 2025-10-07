@@ -51,7 +51,7 @@ async fn start_recording(
         return Err(format!("Configuration file not found: {}. Please create the nerd-dictation config file.", config_file));
     }
 
-    // Build command with configuration
+    // Build command with configuration that outputs to STDOUT instead of typing
     let mut cmd = Command::new(nerd_dictation_path);
     cmd.arg("begin")
         .arg("--vosk-model-dir")
@@ -60,12 +60,20 @@ async fn start_recording(
         .arg(config.timeout.to_string())
         .arg("--config")
         .arg(&config_file)
+        .arg("--output")
+        .arg("STDOUT")
+        .arg("--defer-output")  // This ensures output is deferred until we call 'end'
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
     // Add numbers as digits flag if enabled
     if config.numbers_as_digits {
         cmd.arg("--numbers-as-digits");
+    }
+
+    // Add auto punctuation if enabled
+    if config.auto_punctuation {
+        cmd.arg("--full-sentence");
     }
 
     // Start the process
@@ -82,36 +90,42 @@ async fn start_recording(
 // Stop voice recording
 #[tauri::command]
 async fn stop_recording(state: State<'_, VoiceState>) -> Result<String, String> {
-    // End nerd-dictation
-    let nerd_dictation_path = which::which("nerd-dictation")
-        .or_else(|_| {
-            let home = std::env::var("HOME").unwrap_or_default();
-            which::which(format!("{}/.local/bin/nerd-dictation", home))
-        })
-        .map_err(|e| format!("nerd-dictation not found: {}", e))?;
+    // Get the stored process
+    let child_opt = state.process.lock().unwrap().take();
+    
+    if let Some(child) = child_opt {
+        // End nerd-dictation first
+        let nerd_dictation_path = which::which("nerd-dictation")
+            .or_else(|_| {
+                let home = std::env::var("HOME").unwrap_or_default();
+                which::which(format!("{}/.local/bin/nerd-dictation", home))
+            })
+            .map_err(|e| format!("nerd-dictation not found: {}", e))?;
 
-    let _output = Command::new(nerd_dictation_path)
-        .arg("end")
-        .output()
-        .map_err(|e| format!("Failed to stop recording: {}", e))?;
+        let _end_output = Command::new(nerd_dictation_path)
+            .arg("end")
+            .output()
+            .map_err(|e| format!("Failed to end recording: {}", e))?;
 
-    // Kill the stored process if it exists
-    if let Some(mut child) = state.process.lock().unwrap().take() {
-        if let Err(e) = child.kill() {
-            eprintln!("Warning: Failed to kill recording process: {}", e);
+        // Now wait for the process to complete and capture its stdout
+        let output = child
+            .wait_with_output()
+            .map_err(|e| format!("Failed to read recording output: {}", e))?;
+
+        // Get the transcribed text from stdout
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        
+        // If there's an error in stderr, log it but don't fail
+        if !output.stderr.is_empty() {
+            let stderr_text = String::from_utf8_lossy(&output.stderr);
+            eprintln!("nerd-dictation stderr: {}", stderr_text);
         }
+
+        Ok(text)
+    } else {
+        // No process was running
+        Err("No recording process found".to_string())
     }
-
-    // The text output is typically in clipboard via xdotool
-    // We'll use xclip to get it
-    let clipboard_output = Command::new("xclip")
-        .args(["-selection", "clipboard", "-o"])
-        .output()
-        .map_err(|e| format!("Failed to read clipboard: {}", e))?;
-
-    let text = String::from_utf8_lossy(&clipboard_output.stdout).to_string();
-
-    Ok(text)
 }
 
 // Insert text into active window using xdotool
